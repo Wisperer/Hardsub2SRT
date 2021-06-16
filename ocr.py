@@ -7,19 +7,25 @@ import srt
 from datetime import timedelta
 import argparse
 
+
 def get_filename(fn) -> str:
     basename: str = os.path.basename(fn)
     withoutExt: tuple = os.path.splitext(basename)
     return withoutExt[0]
 
+
 def txt_cleanup(txt):
-    chinese_text = []
+    usable_text = []
     for c in txt:
-        if unicodedata.category(c) == 'Lo':
-            chinese_text.append(c)
-    chinese_text = ''.join(chinese_text)
-    
-    return chinese_text
+        if unicodedata.category(c) == 'Ll':
+            usable_text.append(c)
+        else:
+            unicodedata.category(c) == 'Lu'
+            usable_text.append(c)
+    usable_text = ''.join(usable_text)
+
+    return usable_text
+
 
 def timeshift_to_ms(ts):
     stime = ts.split('.')
@@ -28,20 +34,28 @@ def timeshift_to_ms(ts):
 
     return (int(h) * 3600 + int(m) * 60 + int(s)) * 1000 + int(ms)
 
+
 def get_time_in_ms(frameno):
     ms = frameno / fps * 1000
     delta = timedelta(milliseconds=(ms+timeshift_to_ms(timeshift)))
-    return delta    
+    return delta
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--wimg-dir', dest='wimgdir', type=str, default='wimg', metavar='<dir>', help="Specify location of threshold image directory")
-    parser.add_argument('-l', '--lang', dest='language', type=str, default='ch_sim', metavar='<lang>', help="Specify language of hardcoded subtitle text")
-    parser.add_argument('-a', '--accuracy', dest='accuracy', type=float, default=0.7, metavar='<acc>', help="Specify accuracy delta of comparisons between two subtitles")
-    parser.add_argument('-fps', '--fps', dest='fps', type=int, default=1, metavar='<fps>', help="Specify how many image frames were taken per second")
-    parser.add_argument('-ss', '--time-shift', dest='timeshift', type=str, default=0, metavar='<timeshift>', help="Specify how far forward the subtitles should be shifted forward in milliseconds")
-    parser.add_argument('-o', '--output-file', dest='output', type=str, default='xiaowanzi.srt', metavar='<file>', help="Specify filename of srt file")
+    parser.add_argument('-d', '--wimg-dir', dest='wimgdir', type=str, default='wimg',
+                        metavar='<dir>', help="Specify location of threshold image directory")
+    parser.add_argument('-l', '--lang', dest='language', type=str, default='en',
+                        metavar='<lang>', help="Specify language of hardcoded subtitle text")
+    parser.add_argument('-a', '--accuracy', dest='accuracy', type=float, default=0.7,
+                        metavar='<acc>', help="Specify accuracy delta of comparisons between two subtitles")
+    parser.add_argument('-fps', '--fps', dest='fps', type=int, default=1,
+                        metavar='<fps>', help="Specify how many image frames were taken per second")
+    parser.add_argument('-ss', '--time-shift', dest='timeshift', type=str, default=0, metavar='<timeshift>',
+                        help="Specify how far forward the subtitles should be shifted forward in milliseconds")
+    parser.add_argument('-o', '--output-file', dest='output', type=str,
+                        default='xiaowanzi.srt', metavar='<file>', help="Specify filename of srt file")
 
     args = parser.parse_args()
 
@@ -50,16 +64,16 @@ if __name__ == "__main__":
     accuracy = args.accuracy
     fps = args.fps
     timeshift = args.timeshift
-    output_filename= args.output
+    output_filename = args.output
 
     reader = easyocr.Reader([lang])
-
 
     frames = []
     output_text = []
 
     for f in os.listdir(wimg_dir):
-        result = reader.readtext(os.path.join(wimg_dir,f), detail=0)
+        result = reader.readtext(os.path.join(
+            wimg_dir, f), detail=0, width_ths=0.3)
 
         frame = get_filename(f)
         text = ''.join(result)
@@ -83,7 +97,7 @@ if __name__ == "__main__":
         ogTxt = output_text[i]
         while (i < len(frames) and jf.jaro_distance(output_text[i], ogTxt) > accuracy):
             i += 1
-        
+
         if (i < len(frames)):
             edframe = frames[i-1]+1
         subinfo.append([ogframe, edframe, ogTxt])
@@ -95,7 +109,8 @@ if __name__ == "__main__":
     index = 1
     for info in subinfo:
         stime, etime, text = info
-        sub = srt.Subtitle(index=index, start=get_time_in_ms(stime), end=get_time_in_ms(etime), content=text)
+        sub = srt.Subtitle(index=index, start=get_time_in_ms(
+            stime), end=get_time_in_ms(etime), content=text)
         subs.append(sub)
         index += 1
 
